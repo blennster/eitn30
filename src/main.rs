@@ -5,16 +5,24 @@ use std::time::Duration;
 use nrf24l01::{OperatingMode, PALevel, RXConfig, TXConfig, NRF24L01};
 
 fn main() {
-    let args = env::args().collect::<String>();
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+    let t = args[1].clone();
+    let spi = args[2].parse::<u8>().unwrap();
+    let ce = match spi {
+        0 => 17,
+        1 => 27,
+        _ => panic!(),
+    };
 
-    if args.contains("rx") {
+    if t == "rx" {
         let config = RXConfig {
             channel: 0,
             pa_level: PALevel::Low,
             pipe0_address: *b"abcde",
             ..Default::default()
         };
-        let mut device = NRF24L01::new(27, 1).unwrap();
+        let mut device = NRF24L01::new(ce, spi, 0).unwrap();
         device.configure(&OperatingMode::RX(config)).unwrap();
         device.listen().unwrap();
         loop {
@@ -28,7 +36,7 @@ fn main() {
                     .unwrap();
             }
         }
-    } else if args.contains("tx") {
+    } else if t == "tx" {
         let config = TXConfig {
             channel: 0,
             pa_level: PALevel::Low,
@@ -37,7 +45,7 @@ fn main() {
             retry_delay: 2,
             ..Default::default()
         };
-        let mut device = NRF24L01::new(17, 0).unwrap();
+        let mut device = NRF24L01::new(ce, spi, 0).unwrap();
         let message = b"sendtest";
         device.configure(&OperatingMode::TX(config)).unwrap();
         device.flush_output().unwrap();
