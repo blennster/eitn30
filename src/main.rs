@@ -1,10 +1,14 @@
+fn main() {
+    tun();
+}
+
 use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 
 use nrf24l01::{OperatingMode, PALevel, RXConfig, TXConfig, NRF24L01};
 
-fn main() {
+fn nrf() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
     let t = args[1].clone();
@@ -62,5 +66,38 @@ fn main() {
         }
     } else {
         println!("specify tx or rx");
+    }
+}
+
+use std::io::Read;
+
+extern crate packet;
+extern crate tun;
+
+use packet::{ip, udp, Packet};
+
+fn tun() {
+    let mut config = tun::Configuration::default();
+    config
+        .address((172, 0, 0, 1))
+        .netmask((255, 255, 255, 0))
+        .up();
+
+    #[cfg(target_os = "linux")]
+    config.platform(|config| {
+        config.packet_information(false);
+    });
+
+    let mut dev = tun::create(&config).unwrap();
+    let mut buf = [0; 4096];
+
+    loop {
+        let amount = dev.read(&mut buf).unwrap();
+        let p = ip::Packet::new(&buf[0..amount]).unwrap();
+        println!("{:?}", p);
+        let p2 = udp::Packet::new(p.payload()).unwrap();
+        println!("{:?}", p2);
+        println!("{:?}", std::str::from_utf8(p2.payload()));
+        //println!("{} bytes: {:?}", amount, &buf[0..amount]);
     }
 }
