@@ -1,103 +1,135 @@
-fn main() {
-    tun();
-}
-
-use std::env;
-use std::thread::sleep;
-use std::time::Duration;
+use std::{
+    env,
+    io::{Read, Write},
+    thread::sleep,
+    time::Duration,
+};
 
 use nrf24l01::{OperatingMode, PALevel, RXConfig, TXConfig, NRF24L01};
 
-fn nrf() {
+use crate::virtual_interface::lib::icmp_reply;
+
+mod virtual_interface;
+
+const DELAY: u64 = 10;
+
+fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
-    let t = args[1].clone();
-    let spi = args[2].parse::<u8>().unwrap();
-    let ce = match spi {
-        0 => 17,
-        1 => 27,
+    let mut config = tun::Configuration::default();
+    let addr = match args[1].as_str() {
+        "rx" => *b"abcde",
+        "tx" => *b"edcba",
+        _ => panic!(),
+    };
+    let other_addr = match args[1].as_str() {
+        "tx" => *b"abcde",
+        "rx" => *b"edcba",
         _ => panic!(),
     };
 
-    if t == "rx" {
-        let config = RXConfig {
-            channel: 0,
-            pa_level: PALevel::Low,
-            pipe0_address: *b"abcde",
-            ..Default::default()
-        };
-        let mut device = NRF24L01::new(ce, spi, 0).unwrap();
-        device.configure(&OperatingMode::RX(config)).unwrap();
-        device.listen().unwrap();
-        loop {
-            sleep(Duration::from_millis(500));
-            if device.data_available().unwrap() {
-                device
-                    .read_all(|packet| {
-                        println!("Received {:?} bytes", packet.len());
-                        println!("Payload {:?}", packet);
-                    })
-                    .unwrap();
-            }
-        }
-    } else if t == "tx" {
-        let config = TXConfig {
-            channel: 0,
-            pa_level: PALevel::Low,
-            pipe0_address: *b"abcde",
-            max_retries: 3,
-            retry_delay: 2,
-            ..Default::default()
-        };
-        let mut device = NRF24L01::new(ce, spi, 0).unwrap();
-        let message = b"sendtest";
-        device.configure(&OperatingMode::TX(config)).unwrap();
-        device.flush_output().unwrap();
-        loop {
-            device.push(0, message).unwrap();
-            match device.send() {
-                Ok(retries) => println!("Message sent, {} retries needed", retries),
-                Err(err) => {
-                    println!("Destination unreachable: {:?}", err);
-                    device.flush_output().unwrap()
-                }
-            };
-            sleep(Duration::from_millis(5000));
-        }
-    } else {
-        println!("specify tx or rx");
+    config
+        .address((172, 0, 0, 1))
+        .netmask((255, 255, 255, 128))
+        .up();
+
+    let mut dev = tun::create(&config).unwrap();
+    let config = RXConfig {
+        channel: 110,
+        pa_level: PALevel::Low,
+        pipe0_address: addr,
+        ..Default::default()
+    };
+    let mut nrf_rx = NRF24L01::new(17, 0, 0).unwrap();
+    nrf_rx.configure(&OperatingMode::RX(config)).unwrap();
+    nrf_rx.listen().unwrap();
+    let config = TXConfig {
+        channel: 110,
+        pa_level: PALevel::Low,
+        pipe0_address: other_addr,
+        max_retries: 3,
+        retry_delay: 2,
+        ..Default::default()
+    };
+    let mut nrf_tx = NRF24L01::new(27, 1, 0).unwrap();
+    nrf_tx.configure(&OperatingMode::TX(config)).unwrap();
+    nrf_tx.flush_output().unwrap();
+
+    match args[1].as_str() {
+        "rx" => tun_rx(&mut dev, &mut nrf_rx, &mut nrf_tx),
+        "tx" => tun_tx(&mut dev, &mut nrf_rx, &mut nrf_tx),
+        _ => panic!(),
     }
 }
 
-use std::io::Read;
-
-extern crate packet;
-extern crate tun;
-
-use packet::{ip, udp, Packet};
-
-fn tun() {
-    let mut config = tun::Configuration::default();
-    config
-        .address((172, 0, 0, 1))
-        .netmask((255, 255, 255, 0))
-        .up();
-
-    #[cfg(target_os = "linux")]
-    config.platform(|config| {
-        config.packet_information(false);
-    });
-
-    let mut dev = tun::create(&config).unwrap();
-    let mut buf = [0; 4096];
-
+fn tun_tx(dev: &mut tun::platform::Device, nrf_rx: &mut NRF24L01, nrf_tx: &mut NRF24L01) {
     loop {
-        let amount = dev.read(&mut buf).unwrap();
-        let p = ip::Packet::new(&buf[0..amount]).unwrap();
-        println!("{:?}", p);
-        let p2 = udp::Packet::new(p.payload()).unwrap();
-        println!("{:?}", p2);
-        println!("{:?}", std::str::from_utf8(p2.payload()));
-        //println!("{} bytes: {:?}", amount, &buf[0..amount]);
+        let mut buf = [0; 1024];
+        let mut offset = 0;
+        let n = dev.read(&mut buf).unwrap();
+        let pkt = &buf[0..n];
+        println!("pkt size: {}", n);
+        for chunk in pkt.chunks(32) {
+            nrf_tx.push(0, chunk).unwrap();
+        }
+        match nrf_tx.send() {
+            Ok(retries) => println!("Message sent, {} retries needed", retries),
+            Err(err) => {
+                println!("Destination unreachable: {:?}", err);
+                nrf_tx.flush_output().unwrap()
+            }
+        };
+        sleep(Duration::from_millis(DELAY));
+        if nrf_rx.data_available().unwrap() {
+            nrf_rx
+                .read_all(|packet| {
+                    for (i, byte) in packet.iter().enumerate() {
+                        buf[i + offset] = *byte;
+                    }
+                    offset += packet.len();
+                })
+                .unwrap();
+            dev.write(&buf);
+        }
+        sleep(Duration::from_millis(DELAY));
+    }
+}
+
+fn tun_rx(dev: &mut tun::platform::Device, nrf_rx: &mut NRF24L01, nrf_tx: &mut NRF24L01) {
+    loop {
+        let mut buf = [0u8; 1024];
+        let mut offset = 0;
+        sleep(Duration::from_millis(DELAY));
+        if nrf_rx.data_available().unwrap() {
+            println!("received packet!");
+            nrf_rx
+                .read_all(|packet| {
+                    for (i, byte) in packet.iter().enumerate() {
+                        buf[i + offset] = *byte;
+                    }
+                    offset += packet.len();
+                })
+                .unwrap();
+            if let Ok(pkt) = icmp_reply(&buf) {
+                for chunk in pkt.chunks(32) {
+                    nrf_tx.push(0, chunk).unwrap();
+                }
+                match nrf_tx.send() {
+                    Ok(retries) => println!("Message sent, {} retries needed", retries),
+                    Err(err) => {
+                        println!("Destination unreachable: {:?}", err);
+                        nrf_tx.flush_output().unwrap()
+                    }
+                };
+            } else {
+                nrf_tx.push(0, b"packet fail").unwrap();
+                match nrf_tx.send() {
+                    Ok(retries) => println!("Message sent, {} retries needed", retries),
+                    Err(err) => {
+                        println!("Destination unreachable: {:?}", err);
+                        nrf_tx.flush_output().unwrap()
+                    }
+                };
+            }
+        }
     }
 }
