@@ -1,7 +1,8 @@
 use std::{
     env,
     io::{Read, Write},
-    thread::sleep,
+    sync::{Arc, Mutex},
+    thread::{self, sleep},
     time::Duration,
 };
 
@@ -15,7 +16,6 @@ const DELAY: u64 = 10;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut config = tun::Configuration::default();
     let addr = match args[1].as_str() {
         "rx" => *b"abcde",
         "tx" => *b"edcba",
@@ -26,13 +26,26 @@ fn main() {
         "rx" => *b"edcba",
         _ => panic!(),
     };
+    let tun_addr = match args[1].as_str() {
+        "tx" => 1,
+        "rx" => 2,
+        _ => panic!(),
+    };
+    let other_tun_addr = match args[1].as_str() {
+        "tx" => 2,
+        "rx" => 1,
+        _ => panic!(),
+    };
 
+    let mut config = tun::Configuration::default();
     config
-        .address((172, 0, 0, 1))
-        .netmask((255, 255, 255, 128))
+        .address((172, 0, 0, tun_addr))
+        .netmask((255, 255, 255, 0))
+        .destination((172, 0, 0, other_tun_addr))
         .up();
 
-    let mut dev = tun::create(&config).unwrap();
+    let dev = tun::create(&config).unwrap();
+
     let config = RXConfig {
         channel: 110,
         pa_level: PALevel::Low,
@@ -54,11 +67,90 @@ fn main() {
     nrf_tx.configure(&OperatingMode::TX(config)).unwrap();
     nrf_tx.flush_output().unwrap();
 
-    match args[1].as_str() {
-        "rx" => tun_rx(&mut dev, &mut nrf_rx, &mut nrf_tx),
-        "tx" => tun_tx(&mut dev, &mut nrf_rx, &mut nrf_tx),
-        _ => panic!(),
-    }
+    tun(dev, nrf_rx, nrf_tx);
+
+    // match args[1].as_str() {
+    //     "rx" => tun_rx(&mut dev, &mut nrf_rx, &mut nrf_tx),
+    //     "tx" => tun_tx(&mut dev, &mut nrf_rx, &mut nrf_tx),
+    //     _ => panic!(),
+    // }
+}
+
+fn tun(dev: tun::platform::Device, mut nrf_rx: NRF24L01, mut nrf_tx: NRF24L01) {
+    dev.set_nonblock().unwrap();
+    let tun_arc = Arc::new(Mutex::new(dev));
+
+    // RX loop
+    let tun = Arc::clone(&tun_arc);
+    thread::spawn(move || {
+        println!("rx thread started!");
+        let mut buf = [0u8; 1024];
+        loop {
+            let mut offset = 0;
+            sleep(Duration::from_millis(1));
+            if nrf_rx.data_available().unwrap() {
+                let n = nrf_rx
+                    .read_all(|packet| {
+                        for (i, byte) in packet.iter().enumerate() {
+                            buf[i + offset] = *byte;
+                        }
+                        offset += packet.len();
+                    })
+                    .unwrap();
+                println!("{} packets received", n);
+                let mut tun = tun.lock().unwrap();
+                tun.write(&buf[0..offset]);
+                drop(tun);
+            }
+        }
+    });
+
+    // TX loop
+    let tun = Arc::clone(&tun_arc);
+    thread::spawn(move || {
+        println!("tx thread started!");
+        let mut buf = [0u8; 1024];
+        loop {
+            sleep(Duration::from_millis(1));
+            let mut tun = tun.lock().unwrap();
+            let read_result = tun.read(&mut buf);
+            drop(tun);
+            if let Ok(n) = read_result {
+                if n == 0 {
+                    continue;
+                }
+
+                let pkt = &buf[0..n];
+                let mut chunks = vec![];
+                let mut queue = vec![];
+                for (i, chunk) in pkt.chunks(32).enumerate() {
+                    queue.push(chunk);
+                    if (i + 1) % 3 == 0 {
+                        chunks.push(queue.clone());
+                        queue.clear();
+                    }
+                }
+                if !queue.is_empty() {
+                    chunks.push(queue);
+                }
+
+                for queue in chunks {
+                    for pkt in queue {
+                        nrf_tx.push(0, pkt).unwrap();
+                    }
+                    match nrf_tx.send() {
+                        Ok(retries) => println!("Message sent, {} retries needed", retries),
+                        Err(err) => {
+                            println!("Destination unreachable: {:?}", err);
+                            nrf_tx.flush_output().unwrap()
+                        }
+                    };
+                }
+            }
+        }
+    })
+    .join()
+    .unwrap();
 }
 
 fn tun_tx(dev: &mut tun::platform::Device, nrf_rx: &mut NRF24L01, nrf_tx: &mut NRF24L01) {
