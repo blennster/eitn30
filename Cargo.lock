@@ -87,7 +87,7 @@ dependencies = [
 [[package]]
 name = "nrf24l01"
 version = "0.3.0"
-source = "git+https://github.com/blennster/rust-nrf24l01#d300da955e4771d0e253093387d1a5ed5a3401cd"
+source = "git+https://github.com/blennster/rust-nrf24l01.git#d300da955e4771d0e253093387d1a5ed5a3401cd"
 dependencies = [
  "rppal",
  "spidev",
@@ -270,8 +270,7 @@ dependencies = [
 [[package]]
 name = "tun"
 version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ad14dc69c82f850bc4c0dc6e7c902893b72827fb34d256fa78e81630a5da86c"
+source = "git+https://github.com/blennster/rust-tun.git#5d3ef3c7a348eea2bb4dfa832961b538ab4327c6"
 dependencies = [
  "ioctl-sys",
  "libc",
