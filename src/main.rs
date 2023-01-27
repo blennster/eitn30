@@ -12,7 +12,8 @@ extern crate tun;
 mod virtual_interface;
 
 const MTU: usize = 500;
-const RESET_BUF: [u8; 3] = [255, 255, 255];
+const BUF_SIZE: usize = 4096;
+const RESET_BUF: [u8; 5] = [255, 255, 255, 255, 255];
 
 macro_rules! debug_println {
     ($($rest:tt)*) => {
@@ -98,14 +99,20 @@ fn tun(dev: tun::platform::Device, mut nrf_rx: NRF24L01, mut nrf_tx: NRF24L01, d
     // RX loop
     let rx = thread::spawn(move || {
         println!("rx thread started!");
-        let mut buf = [0u8; MTU * 2];
+        let mut buf = [0u8; 4096];
         let mut end = 0;
         let mut reset_buf = false;
 
         loop {
             sleep(Duration::from_micros(delay));
             if nrf_rx.data_available().unwrap() {
+                if end + 96 >= BUF_SIZE {
+                    end = 0;
+                }
+
                 let n = nrf_rx
+                    // read all cannot have range checks since it blocks the
+                    // radio hardware hurting performance
                     .read_all(|packet| {
                         for byte in packet.iter() {
                             buf[end] = *byte;
@@ -117,7 +124,7 @@ fn tun(dev: tun::platform::Device, mut nrf_rx: NRF24L01, mut nrf_tx: NRF24L01, d
                 for packet in buf[0..end].chunks(32) {
                     if packet.eq(&RESET_BUF) {
                         reset_buf = true;
-                        continue;
+                        break;
                     }
                 }
 
@@ -125,12 +132,14 @@ fn tun(dev: tun::platform::Device, mut nrf_rx: NRF24L01, mut nrf_tx: NRF24L01, d
                     end = 0;
                     reset_buf = false;
                     debug_println!("reset buf command received");
+                    continue;
                 }
 
                 debug_println!("{} packets received", n);
                 // Make sure the packet is valid
-                if end != 0 && packet::ip::Packet::new(&buf[0..end]).is_ok() {
-                    let result = writer.write(&buf[0..end]);
+                let pkt = &buf[0..end];
+                if end != 0 && packet::ip::Packet::new(pkt).is_ok() {
+                    let result = writer.write(pkt);
                     match result {
                         Ok(n) => debug_println!("{} bytes written to interface", n),
                         Err(err) => debug_println!("{} error when writing to interface", err),
@@ -144,7 +153,7 @@ fn tun(dev: tun::platform::Device, mut nrf_rx: NRF24L01, mut nrf_tx: NRF24L01, d
     // TX loop
     let tx = thread::spawn(move || {
         println!("tx thread started!");
-        let mut buf = [0u8; MTU];
+        let mut buf = [0u8; BUF_SIZE];
         loop {
             sleep(Duration::from_micros(delay));
             let read_result = reader.read(&mut buf);
