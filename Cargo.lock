@@ -87,7 +87,7 @@ dependencies = [
 [[package]]
 name = "nrf24l01"
 version = "0.3.0"
-source = "git+https://github.com/blennster/rust-nrf24l01.git#d300da955e4771d0e253093387d1a5ed5a3401cd"
+source = "git+https://github.com/blennster/rust-nrf24l01.git#a13f2814f12e1977b921b1882a3f6e4368460794"
 dependencies = [
  "rppal",
  "spidev",
