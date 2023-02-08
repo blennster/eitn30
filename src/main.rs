@@ -10,11 +10,8 @@ use tun::platform::posix::{Reader, Writer};
 
 extern crate tun;
 
-mod virtual_interface;
-
 const MTU: usize = 900;
 const BUF_SIZE: usize = 4096;
-const RESET_BUF: [u8; 5] = [255, 255, 255, 255, 255];
 
 macro_rules! debug_println {
     ($($rest:tt)*) => {
@@ -161,8 +158,6 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, delay: u64) {
             }
         }
     }
-
-    println!("rx thread stopped! this should not happen")
 }
 
 fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, delay: u64) {
@@ -230,6 +225,4 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
             }
         }
     }
-
-    println!("tx thread stopped! this should not happen")
 }
