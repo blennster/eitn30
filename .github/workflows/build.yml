@@ -34,7 +34,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          command: build --release 
+          command: build 
+          args: --release --target armv7-unknown-linux-gnueabihf
       
       - name: Publish build result
         uses: softprops/action-gh-release@v1

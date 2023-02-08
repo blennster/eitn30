@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "inuti"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "nrf24l01",
  "packet",
