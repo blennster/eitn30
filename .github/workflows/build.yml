@@ -1,4 +1,8 @@
-on: [push]
+on:
+  push:
+    paths:
+      - 'src/**.rs'
+      - 'Cargo.*'
 
 name: build
 
@@ -30,4 +34,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          command: build
+          command: build --release 
+      
+      - name: Publish build result
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/armv7-unknown-linux-gnueabihf/inuti
