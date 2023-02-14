@@ -38,7 +38,9 @@ jobs:
           command: build 
           args: --release --target armv7-unknown-linux-gnueabihf
       
-      - name: Publish build result
-        uses: softprops/action-gh-release@v1
+      - name: Upload build result
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
         with:
-          files: target/armv7-unknown-linux-gnueabihf/inuti
+          name: inuti
+          path: target/armv7-unknown-linux-gnueabihf/inuti
