@@ -16,7 +16,6 @@ default-target = "armv7-unknown-linux-gnueabihf"
 [profile.release]
 opt-level = 3
 debug = false
-split-debuginfo = '...'  # Platform-specific.
 debug-assertions = false
 overflow-checks = false
 lto = false
