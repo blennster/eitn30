@@ -1,8 +1,8 @@
 on:
   push:
-    paths:
-      - 'src/**.rs'
-      - 'Cargo.*'
+    # paths:
+    #   - 'src/**.rs'
+    #   - 'Cargo.*'
 
 name: build
 
