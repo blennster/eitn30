@@ -11,32 +11,25 @@ jobs:
     name: Rust project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+
+      - name: Install latest stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
-          profile: minimal
-          default: true
           components: clippy
 
       # `cargo check` command here will use installed `nightly`
       # as it is set as an "override" for current directory
+      - name: Add cross
+        run: wget -qO - https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-gnu.tar.gz | tar -xzf - -C ~/.cargo/bin
 
       - name: Run cross clippy
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: clippy
+        run: cross clippy
 
       # This will use the default config in Cargo.toml
       - name: Run cross build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build 
-          args: --release --target armv7-unknown-linux-gnueabihf
+        run: cross build --release --target armv7-unknown-linux-gnueabihf
       
       - name: Upload build result
         if: ${{ success() }}
