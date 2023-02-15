@@ -2,6 +2,7 @@
 name = "inuti"
 version = "0.1.2"
 edition = "2021"
+authors = ["Emil Blennow <emil.blennow99@gmail.com>", "Jacob Forsell <jacobzeforsell@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,6 +10,7 @@ edition = "2021"
 nrf24l01 = { version="0.3.0", features=['rpi_accel'], git='https://github.com/blennster/rust-nrf24l01.git'}
 tun = { version="0.5", git='https://github.com/blennster/rust-tun.git' }
 packet = "0.1.4"
+clap = { version = "4.1.4", features = ["derive"] }
 
 [package.metadata.cross.build]
 default-target = "armv7-unknown-linux-gnueabihf"

@@ -1,16 +1,16 @@
 use std::{
-    env,
     io::{Read, Write},
     thread::{self, sleep},
     time::Duration,
 };
+
+use clap::Parser;
 
 use nrf24l01::{DataRate, OperatingMode, PALevel, RXConfig, TXConfig, NRF24L01};
 use tun::platform::posix::{Reader, Writer};
 
 extern crate tun;
 
-const MTU: usize = 900;
 const BUF_SIZE: usize = 4096;
 
 macro_rules! debug_println {
@@ -21,29 +21,39 @@ macro_rules! debug_println {
     }
 }
 
+/// A program for sending IP traffic over NRF24L01. This program needs to be run
+/// as root or have the cap_net_admin capability.
+#[derive(Parser, Debug)]
+#[command(author, about)]
+struct Args {
+    /// The address this device should listen on. Should be in range 1-254.
+    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..254))]
+    address: u8,
+
+    /// How long (in micros) every loop sleeps. Higher value means higher ping but less usage.
+    #[arg(long, default_value_t = 20)]
+    delay: u64,
+
+    /// The MTU that should be used for the TUN interface.
+    #[arg(long, default_value_t = 900, value_parser = clap::value_parser!(i32).range(500..65535))]
+    mtu: i32,
+
+    /// Makes this device tunnel all traffic through the given address.
+    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..254))]
+    tunnel_address: Option<u8>,
+}
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
     let mut rx_addr = *b"rx0";
 
-    let input_addr = args[1]
-        .parse::<u8>()
-        .expect("addr needs to be number in range [0,255]");
-
-    if input_addr == 0 || input_addr == 255 {
-        panic!("address 0 or 255 is not allowed");
-    }
-
-    *rx_addr.last_mut().unwrap() = input_addr;
-
-    let delay = args[2]
-        .parse::<u64>()
-        .expect("loop delay in micros must be provided");
+    *rx_addr.last_mut().unwrap() = args.address;
 
     let mut config = tun::Configuration::default();
     config
-        .address((172, 0, 0, input_addr))
+        .address((172, 0, 0, args.address))
         .netmask((255, 255, 255, 0))
-        .mtu(MTU as i32)
+        .mtu(args.mtu)
         .up();
 
     let dev = tun::create(&config).unwrap();
@@ -76,10 +86,10 @@ fn main() {
     println!(
         "started listening on rx{} and IP 172.0.0.{}",
         rx_addr.last().unwrap(),
-        input_addr
+        args.address
     );
 
-    tun(dev, config_rx, config_tx, delay);
+    tun(dev, config_rx, config_tx, args.delay);
 }
 
 fn tun(dev: tun::platform::Device, config_rx: RXConfig, config_tx: TXConfig, delay: u64) {
