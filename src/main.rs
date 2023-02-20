@@ -12,6 +12,8 @@ use tun::platform::posix::{Reader, Writer};
 extern crate tun;
 
 const BUF_SIZE: usize = 4096;
+const MAX_RETRIES: u8 = 15;
+const RETRY_DELAY: u8 = 10;
 
 macro_rules! debug_println {
     ($($rest:tt)*) => {
@@ -68,18 +70,18 @@ fn main() {
     let mut tx_addr = rx_addr;
     *tx_addr.last_mut().unwrap() += 1;
     let config_tx = TXConfig {
-        channel: args.address,
+        channel: args.address + 1,
         pa_level: PALevel::Low,
         pipe0_address: tx_addr,
-        max_retries: 7,
-        retry_delay: 1,
+        max_retries: MAX_RETRIES,
+        retry_delay: RETRY_DELAY,
         data_rate: DataRate::R2Mbps,
     };
 
     assert!(
         config_rx.data_rate == DataRate::R2Mbps
             && config_rx.data_rate == config_tx.data_rate
-            && config_rx.channel == config_tx.channel
+            && config_rx.channel + 1 == config_tx.channel
             && config_rx.pipe0_address != config_tx.pipe0_address
     );
 
@@ -164,7 +166,7 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, delay: u64) {
                 } else {
                     n_tries -= 1;
                 }
-                sleep(Duration::from_micros(delay));
+                sleep(Duration::from_micros(delay / 2));
             }
         }
     }
@@ -224,15 +226,24 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
                     nrf_tx.push(0, pkt).unwrap();
                     debug_println!("queuing {:?}", pkt);
                 }
+                // Try two times in software
                 match nrf_tx.send() {
                     Ok(retries) => debug_println!("message sent, {} retries needed", retries),
                     Err(err) => {
                         debug_println!("destination unreachable: {:?}", err);
-                        nrf_tx.flush_output().unwrap();
-                        break;
+                        match nrf_tx.send() {
+                            Ok(retries) => {
+                                debug_println!("message sent, {} retries needed", retries)
+                            }
+                            Err(err) => {
+                                debug_println!("destination unreachable: {:?}", err);
+                                nrf_tx.flush_output().unwrap();
+                                break;
+                            }
+                        };
                     }
                 };
-                sleep(Duration::from_micros(delay / 2));
+                sleep(Duration::from_micros(delay));
             }
         }
     }
