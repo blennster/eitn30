@@ -27,7 +27,7 @@ macro_rules! debug_println {
 #[command(author, about)]
 struct Args {
     /// The address this device should listen on. Should be in range 1-254.
-    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..254))]
+    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..125))]
     address: u8,
 
     /// How long (in micros) every loop sleeps. Higher value means higher ping but less usage.
@@ -39,7 +39,7 @@ struct Args {
     mtu: i32,
 
     /// Makes this device tunnel all traffic through the given address.
-    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..254))]
+    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..125))]
     tunnel_address: Option<u8>,
 }
 
@@ -59,7 +59,7 @@ fn main() {
     let dev = tun::create(&config).unwrap();
 
     let config_rx = RXConfig {
-        channel: 110,
+        channel: args.address,
         pa_level: PALevel::Low,
         pipe0_address: rx_addr,
         data_rate: DataRate::R2Mbps,
@@ -68,7 +68,7 @@ fn main() {
     let mut tx_addr = rx_addr;
     *tx_addr.last_mut().unwrap() += 1;
     let config_tx = TXConfig {
-        channel: 110,
+        channel: args.address,
         pa_level: PALevel::Low,
         pipe0_address: tx_addr,
         max_retries: 7,
@@ -192,6 +192,7 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
                     if dst != config_tx.pipe0_address.last().unwrap() {
                         let config_dst = config_tx.pipe0_address.last_mut().unwrap();
                         *config_dst = *dst;
+                        config_tx.channel = *dst;
                         debug_println!("new dst: {}", config_dst);
                         nrf_tx
                             .configure(&OperatingMode::TX(TXConfig { ..config_tx }))
