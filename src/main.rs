@@ -130,6 +130,18 @@ fn main() {
             ])
             .output()
             .unwrap();
+        std::process::Command::new("iptables")
+                .args([
+                    "-t",
+                    "-nat",
+                    "-A",
+                    "POSTROUTING",
+                    "-o",
+                    "wlan0",
+                    "-j",
+                    "MASQUERADE"
+                ]).output()
+                .unwrap();
 
         // Teardown all rules on program exit
         ctrlc::set_handler(|| {
@@ -187,6 +199,19 @@ fn main() {
                     "POSTROUTING",
                     "-o",
                     "eth0",
+                    "-j",
+                    "MASQUERADE",
+                ])
+                .output()
+                .unwrap();
+            std::process::Command::new("iptables")
+                .args([
+                    "-t",
+                    "nat",
+                    "-D",
+                    "POSTROUTING",
+                    "-o",
+                    "wlan0",
                     "-j",
                     "MASQUERADE",
                 ])
