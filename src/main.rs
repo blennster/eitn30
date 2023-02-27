@@ -12,8 +12,6 @@ use tun::platform::posix::{Reader, Writer};
 extern crate tun;
 
 const BUF_SIZE: usize = 4096;
-const MAX_RETRIES: u8 = 15;
-const RETRY_DELAY: u8 = 10;
 
 macro_rules! debug_println {
     ($($rest:tt)*) => {
@@ -43,6 +41,14 @@ struct Args {
     /// Makes this device tunnel all traffic through the given address.
     #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..125))]
     tunnel_address: Option<u8>,
+
+    /// Max retries for the NRF24l01. Any value above 15 is capped to 15.
+    #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..15))]
+    nrf_retries: u8,
+
+    /// Retry delay for the NRF24l01. Any value above 15 is capped to 15.
+    #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..15))]
+    nrf_delay: u8
 }
 
 fn main() {
@@ -73,8 +79,8 @@ fn main() {
         channel: args.address + 1,
         pa_level: PALevel::Low,
         pipe0_address: tx_addr,
-        max_retries: MAX_RETRIES,
-        retry_delay: RETRY_DELAY,
+        max_retries: args.nrf_retries,
+        retry_delay: args.nrf_delay,
         data_rate: DataRate::R2Mbps,
     };
 
