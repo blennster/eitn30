@@ -68,8 +68,7 @@ fn main() {
     let dev = tun::create(&config).unwrap();
 
     if args.tunnel_address.is_some() {
-        let mut file = std::fs::File::open("/proc/sys/net/ipv4/ip_forward").unwrap();
-        write!(&mut file, "1").expect("could not enable ipv4 forwarding");
+        std::fs::write("/proc/sys/net/ipv4/ip_forward", "1").expect("could not enable ipv4 forwarding");
 
         std::process::Command::new("iptables")
             .args([
@@ -218,8 +217,7 @@ fn main() {
                 .output()
                 .unwrap();
 
-            let mut file = std::fs::File::open("/proc/sys/net/ipv4/ip_forward").unwrap();
-            write!(&mut file, "0").expect("could not disable ipv4 forwarding");
+            std::fs::write("/proc/sys/net/ipv4/ip_forward", "0").expect("could not enable ipv4 forwarding");
         }).unwrap();
     }
 
