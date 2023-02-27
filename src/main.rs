@@ -47,7 +47,7 @@ struct Args {
     nrf_retries: u8,
 
     /// Retry delay for the NRF24l01. Any value above 15 is capped to 15.
-    #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..15))]
+    #[arg(short, default_value_t = 10, value_parser = clap::value_parser!(u8).range(0..15))]
     nrf_delay: u8
 }
 
