@@ -218,6 +218,8 @@ fn main() {
                 .unwrap();
 
             std::fs::write("/proc/sys/net/ipv4/ip_forward", "0").expect("could not disable ipv4 forwarding");
+
+            std::process::exit(0);
         }).unwrap();
     }
 
