@@ -131,17 +131,18 @@ fn main() {
             .output()
             .unwrap();
         std::process::Command::new("iptables")
-                .args([
-                    "-t",
-                    "-nat",
-                    "-A",
-                    "POSTROUTING",
-                    "-o",
-                    "wlan0",
-                    "-j",
-                    "MASQUERADE"
-                ]).output()
-                .unwrap();
+            .args([
+                "-t",
+                "-nat",
+                "-A",
+                "POSTROUTING",
+                "-o",
+                "wlan0",
+                "-j",
+                "MASQUERADE",
+            ])
+            .output()
+            .unwrap();
 
         // Teardown all rules on program exit
         ctrlc::set_handler(|| {
@@ -220,7 +221,8 @@ fn main() {
 
             let mut file = std::fs::File::open("/proc/sys/net/ipv4/ip_forward").unwrap();
             write!(&mut file, "0").expect("could not disable ipv4 forwarding");
-        }).unwrap();
+        })
+        .unwrap();
     }
 
     let config_rx = RXConfig {
@@ -285,6 +287,7 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, args: Args) {
     let mut buf = [0u8; 4096];
     let mut end;
     let mut n_tries;
+    let mut current_recv: Option<u8>;
     const INITIAL_N_TRIES: i32 = 2048;
 
     loop {
@@ -293,6 +296,7 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, args: Args) {
         end = 0;
         sleep(Duration::from_millis(1));
         if nrf_rx.data_available().unwrap() {
+            current_recv = None;
             // Data should be coming in now, loop when there is data or for 64 iters
             while n_tries > 0 {
                 if nrf_rx.data_available().unwrap() {
@@ -304,9 +308,16 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, args: Args) {
                         // read all cannot have range checks since it blocks the
                         // radio hardware hurting performance
                         .read_all(|packet| {
-                            let start = end;
-                            end += packet.len();
-                            buf[start..end].copy_from_slice(packet);
+                            let accept = match current_recv {
+                                Some(recv) => recv != packet[0],
+                                None => true,
+                            };
+
+                            if accept {
+                                let start = end;
+                                end += packet.len() - 1;
+                                buf[start..end].copy_from_slice(&packet[1..]);
+                            }
                         })
                         .unwrap() as u32;
 
@@ -324,6 +335,7 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, args: Args) {
                             }
                             end = 0;
                             n_tries = INITIAL_N_TRIES;
+                            current_recv = None;
                         }
                     }
                 } else {
@@ -376,8 +388,8 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
             let mut chunks = vec![];
             let mut queue = vec![];
 
-            for chunk in pkt.chunks(32) {
-                queue.push(chunk);
+            for chunk in pkt.chunks(31) {
+                queue.push([[args.address].as_slice(), &chunk[0..]].concat());
                 if queue.len() == 2 {
                     chunks.push(queue.clone());
                     queue.clear();
@@ -389,7 +401,7 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
 
             for queue in chunks {
                 for pkt in queue {
-                    nrf_tx.push(0, pkt).unwrap();
+                    nrf_tx.push(0, &pkt).unwrap();
                     debug_println!("queuing {:?}", pkt);
                 }
                 // Try two times in software
