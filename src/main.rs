@@ -217,7 +217,7 @@ fn main() {
                 .output()
                 .unwrap();
 
-            std::fs::write("/proc/sys/net/ipv4/ip_forward", "0").expect("could not enable ipv4 forwarding");
+            std::fs::write("/proc/sys/net/ipv4/ip_forward", "0").expect("could not disable ipv4 forwarding");
         }).unwrap();
     }
 
