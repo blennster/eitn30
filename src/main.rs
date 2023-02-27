@@ -23,7 +23,7 @@ macro_rules! debug_println {
 
 /// A program for sending IP traffic over NRF24L01. This program needs to be run
 /// as root or have the cap_net_admin capability.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone, Copy)]
 #[command(author, about)]
 struct Args {
     /// The address this device should listen on. Should be in range 1-254.
@@ -48,7 +48,7 @@ struct Args {
 
     /// Retry delay for the NRF24l01. Any value above 15 is capped to 15.
     #[arg(short, default_value_t = 10, value_parser = clap::value_parser!(u8).range(0..15))]
-    nrf_delay: u8
+    nrf_delay: u8,
 }
 
 fn main() {
@@ -59,12 +59,141 @@ fn main() {
 
     let mut config = tun::Configuration::default();
     config
+        .name("longge")
         .address((172, 0, 0, args.address))
         .netmask((255, 255, 255, 0))
         .mtu(args.mtu)
         .up();
 
     let dev = tun::create(&config).unwrap();
+
+    if args.tunnel_address.is_some() {
+        let mut file = std::fs::File::open("/proc/sys/net/ipv4/ip_forward").unwrap();
+        write!(&mut file, "1").expect("could not enable ipv4 forwardning");
+
+        std::process::Command::new("iptables")
+            .args([
+                "-A", "FORWARD", "-i", "longge", "-o", "eth0", "-j", "ACCEPT",
+            ])
+            .output()
+            .unwrap();
+        std::process::Command::new("iptables")
+            .args([
+                "-A", "FORWARD", "-i", "longge", "-o", "wlan0", "-j", "ACCEPT",
+            ])
+            .output()
+            .unwrap();
+        std::process::Command::new("iptables")
+            .args([
+                "-A",
+                "FORWARD",
+                "-i",
+                "eth0",
+                "-o",
+                "longge",
+                "-m",
+                "state",
+                "--state",
+                "RELATED,ESTABLISHED",
+                "-j",
+                "ACCEPT",
+            ])
+            .output()
+            .unwrap();
+        std::process::Command::new("iptables")
+            .args([
+                "-A",
+                "FORWARD",
+                "-i",
+                "wlan0",
+                "-o",
+                "longge",
+                "-m",
+                "state",
+                "--state",
+                "RELATED,ESTABLISHED",
+                "-j",
+                "ACCEPT",
+            ])
+            .output()
+            .unwrap();
+        std::process::Command::new("iptables")
+            .args([
+                "-t",
+                "nat",
+                "-A",
+                "POSTROUTING",
+                "-o",
+                "eth0",
+                "-j",
+                "MASQUERADE",
+            ])
+            .output()
+            .unwrap();
+
+        // Teardown all rules on program exit
+        ctrlc::set_handler(|| {
+            std::process::Command::new("iptables")
+                .args([
+                    "-D", "FORWARD", "-i", "longge", "-o", "eth0", "-j", "ACCEPT",
+                ])
+                .output()
+                .unwrap();
+            std::process::Command::new("iptables")
+                .args([
+                    "-D", "FORWARD", "-i", "longge", "-o", "wlan0", "-j", "ACCEPT",
+                ])
+                .output()
+                .unwrap();
+            std::process::Command::new("iptables")
+                .args([
+                    "-D",
+                    "FORWARD",
+                    "-i",
+                    "eth0",
+                    "-o",
+                    "longge",
+                    "-m",
+                    "state",
+                    "--state",
+                    "RELATED,ESTABLISHED",
+                    "-j",
+                    "ACCEPT",
+                ])
+                .output()
+                .unwrap();
+            std::process::Command::new("iptables")
+                .args([
+                    "-D",
+                    "FORWARD",
+                    "-i",
+                    "wlan0",
+                    "-o",
+                    "longge",
+                    "-m",
+                    "state",
+                    "--state",
+                    "RELATED,ESTABLISHED",
+                    "-j",
+                    "ACCEPT",
+                ])
+                .output()
+                .unwrap();
+            std::process::Command::new("iptables")
+                .args([
+                    "-t",
+                    "nat",
+                    "-D",
+                    "POSTROUTING",
+                    "-o",
+                    "eth0",
+                    "-j",
+                    "MASQUERADE",
+                ])
+                .output()
+                .unwrap();
+        }).unwrap();
+    }
 
     let config_rx = RXConfig {
         channel: args.address,
@@ -97,10 +226,10 @@ fn main() {
         args.address
     );
 
-    tun(dev, config_rx, config_tx, args.delay);
+    tun(dev, config_rx, config_tx, args);
 }
 
-fn tun(dev: tun::platform::Device, config_rx: RXConfig, config_tx: TXConfig, delay: u64) {
+fn tun(dev: tun::platform::Device, config_rx: RXConfig, config_tx: TXConfig, args: Args) {
     let (reader, writer) = dev.split();
     let mut nrf_rx = NRF24L01::new(17, 0, 0).unwrap();
     nrf_rx.configure(&OperatingMode::RX(config_rx)).unwrap();
@@ -114,16 +243,16 @@ fn tun(dev: tun::platform::Device, config_rx: RXConfig, config_tx: TXConfig, del
     nrf_tx.flush_output().unwrap();
 
     // RX loop
-    let rx = thread::spawn(move || rx_thread(writer, nrf_rx, delay));
+    let rx = thread::spawn(move || rx_thread(writer, nrf_rx, args));
 
     // TX loop
-    let tx = thread::spawn(move || tx_thread(reader, config_tx, nrf_tx, delay));
+    let tx = thread::spawn(move || tx_thread(reader, config_tx, nrf_tx, args));
 
     rx.join().unwrap();
     tx.join().unwrap();
 }
 
-fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, delay: u64) {
+fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, args: Args) {
     println!("rx thread started!");
     let mut buf = [0u8; 4096];
     let mut end;
@@ -172,13 +301,13 @@ fn rx_thread(mut writer: Writer, mut nrf_rx: NRF24L01, delay: u64) {
                 } else {
                     n_tries -= 1;
                 }
-                sleep(Duration::from_micros(delay / 2));
+                sleep(Duration::from_micros(args.delay / 2));
             }
         }
     }
 }
 
-fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, delay: u64) {
+fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, args: Args) {
     println!("tx thread started!");
     let mut buf = [0u8; BUF_SIZE];
 
@@ -193,18 +322,21 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
             let pkt = &buf[0..n];
             match packet::ip::v4::Packet::new(pkt) {
                 Ok(packet) => {
-                    let dst_addr = packet.destination().octets();
-                    let dst = dst_addr.last().unwrap();
+                    // Only set addresses when not using tunnel_address
+                    if args.tunnel_address.is_none() {
+                        let dst_addr = packet.destination().octets();
+                        let dst = dst_addr.last().unwrap();
 
-                    // Don't reconfigure to already set address
-                    if dst != config_tx.pipe0_address.last().unwrap() {
-                        let config_dst = config_tx.pipe0_address.last_mut().unwrap();
-                        *config_dst = *dst;
-                        config_tx.channel = *dst;
-                        debug_println!("new dst: {}", config_dst);
-                        nrf_tx
-                            .configure(&OperatingMode::TX(TXConfig { ..config_tx }))
-                            .unwrap();
+                        // Don't reconfigure to already set address
+                        if dst != config_tx.pipe0_address.last().unwrap() {
+                            let config_dst = config_tx.pipe0_address.last_mut().unwrap();
+                            *config_dst = *dst;
+                            config_tx.channel = *dst;
+                            debug_println!("new dst: {}", config_dst);
+                            nrf_tx
+                                .configure(&OperatingMode::TX(TXConfig { ..config_tx }))
+                                .unwrap();
+                        }
                     }
                 }
                 Err(_) => {
@@ -249,7 +381,7 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
                         };
                     }
                 };
-                sleep(Duration::from_micros(delay));
+                sleep(Duration::from_micros(args.delay));
             }
         }
     }
