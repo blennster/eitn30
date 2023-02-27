@@ -43,11 +43,11 @@ struct Args {
     tunnel_address: Option<u8>,
 
     /// Max retries for the NRF24l01. Any value above 15 is capped to 15.
-    #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..15))]
-    nrf_retries: u8,
+    #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..=15))]
+    retries: u8,
 
     /// Retry delay for the NRF24l01. Any value above 15 is capped to 15.
-    #[arg(short, default_value_t = 10, value_parser = clap::value_parser!(u8).range(0..15))]
+    #[arg(short, default_value_t = 10, value_parser = clap::value_parser!(u8).range(0..=15))]
     nrf_delay: u8,
 }
 
@@ -236,7 +236,7 @@ fn main() {
         channel: args.address + 1,
         pa_level: PALevel::Low,
         pipe0_address: tx_addr,
-        max_retries: args.nrf_retries,
+        max_retries: args.retries,
         retry_delay: args.nrf_delay,
         data_rate: DataRate::R2Mbps,
     };
