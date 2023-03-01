@@ -38,13 +38,10 @@ struct Args {
     #[arg(long, default_value_t = 900, value_parser = clap::value_parser!(i32).range(500..65535))]
     mtu: i32,
 
-    /// Makes this device tunnel all traffic through the given address.
-    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..125))]
-    tunnel_address: Option<u8>,
-
-    /// Makes this device tunnel eligible for tunneling.
-    #[arg(long)]
-    tunnel_enable: Option<bool>,
+    /// Makes this device tunnel all traffic through the given address. This needs to be set on
+    /// both devices
+    #[arg(long, value_parser = clap::value_parser!(u8).range(1..125))]
+    tunnel: Option<u8>,
 
     /// Max retries for the NRF24l01. Any value above 15 is capped to 15.
     #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..=15))]
@@ -71,8 +68,9 @@ fn main() {
 
     let dev = tun::create(&config).unwrap();
 
-    if args.tunnel_address.is_some() || args.tunnel_enable.unwrap_or(false) {
-        std::fs::write("/proc/sys/net/ipv4/ip_forward", "1").expect("could not enable ipv4 forwarding");
+    if args.tunnel.is_some() {
+        std::fs::write("/proc/sys/net/ipv4/ip_forward", "1")
+            .expect("could not enable ipv4 forwarding");
 
         std::process::Command::new("iptables")
             .args([
@@ -134,17 +132,18 @@ fn main() {
             .output()
             .unwrap();
         std::process::Command::new("iptables")
-                .args([
-                    "-t",
-                    "-nat",
-                    "-A",
-                    "POSTROUTING",
-                    "-o",
-                    "wlan0",
-                    "-j",
-                    "MASQUERADE"
-                ]).output()
-                .unwrap();
+            .args([
+                "-t",
+                "-nat",
+                "-A",
+                "POSTROUTING",
+                "-o",
+                "wlan0",
+                "-j",
+                "MASQUERADE",
+            ])
+            .output()
+            .unwrap();
 
         // Teardown all rules on program exit
         ctrlc::set_handler(|| {
@@ -221,10 +220,12 @@ fn main() {
                 .output()
                 .unwrap();
 
-            std::fs::write("/proc/sys/net/ipv4/ip_forward", "0").expect("could not disable ipv4 forwarding");
+            std::fs::write("/proc/sys/net/ipv4/ip_forward", "0")
+                .expect("could not disable ipv4 forwarding");
 
             std::process::exit(0);
-        }).unwrap();
+        })
+        .unwrap();
     }
 
     let config_rx = RXConfig {
@@ -235,7 +236,7 @@ fn main() {
         ..Default::default()
     };
     let mut tx_addr = rx_addr;
-    *tx_addr.last_mut().unwrap() = args.tunnel_address.unwrap_or(args.address + 1);
+    *tx_addr.last_mut().unwrap() = args.tunnel.unwrap_or(args.address + 1);
     let config_tx = TXConfig {
         channel: *tx_addr.last().unwrap(),
         pa_level: PALevel::Low,
@@ -348,7 +349,7 @@ fn tx_thread(mut reader: Reader, mut config_tx: TXConfig, mut nrf_tx: NRF24L01, 
             match packet::ip::v4::Packet::new(pkt) {
                 Ok(packet) => {
                     // Only set addresses when not using tunnel_address
-                    if args.tunnel_address.is_none() {
+                    if args.tunnel.is_none() {
                         let dst_addr = packet.destination().octets();
                         let dst = dst_addr.last().unwrap();
 
