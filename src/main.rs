@@ -134,7 +134,7 @@ fn main() {
         std::process::Command::new("iptables")
             .args([
                 "-t",
-                "-nat",
+                "nat",
                 "-A",
                 "POSTROUTING",
                 "-o",
