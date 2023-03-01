@@ -43,7 +43,7 @@ struct Args {
     tunnel_address: Option<u8>,
 
     /// Makes this device tunnel eligible for tunneling.
-    #[arg(short, long)]
+    #[arg(long)]
     tunnel_enable: Option<bool>,
 
     /// Max retries for the NRF24l01. Any value above 15 is capped to 15.
@@ -244,13 +244,6 @@ fn main() {
         retry_delay: args.nrf_delay,
         data_rate: DataRate::R2Mbps,
     };
-
-    assert!(
-        config_rx.data_rate == DataRate::R2Mbps
-            && config_rx.data_rate == config_tx.data_rate
-            && config_rx.channel + 1 == config_tx.channel
-            && config_rx.pipe0_address != config_tx.pipe0_address
-    );
 
     println!(
         "started listening on rx{} and IP 172.0.0.{}",
