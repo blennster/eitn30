@@ -42,6 +42,10 @@ struct Args {
     #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..125))]
     tunnel_address: Option<u8>,
 
+    /// Makes this device tunnel eligible for tunneling.
+    #[arg(short, long)]
+    tunnel_enable: Option<bool>,
+
     /// Max retries for the NRF24l01. Any value above 15 is capped to 15.
     #[arg(short, default_value_t = 15, value_parser = clap::value_parser!(u8).range(0..=15))]
     retries: u8,
@@ -67,7 +71,7 @@ fn main() {
 
     let dev = tun::create(&config).unwrap();
 
-    if args.tunnel_address.is_some() {
+    if args.tunnel_address.is_some() || args.tunnel_enable.unwrap_or(false) {
         std::fs::write("/proc/sys/net/ipv4/ip_forward", "1").expect("could not enable ipv4 forwarding");
 
         std::process::Command::new("iptables")
@@ -231,9 +235,9 @@ fn main() {
         ..Default::default()
     };
     let mut tx_addr = rx_addr;
-    *tx_addr.last_mut().unwrap() += 1;
+    *tx_addr.last_mut().unwrap() = args.tunnel_address.unwrap_or(args.address + 1);
     let config_tx = TXConfig {
-        channel: args.address + 1,
+        channel: *tx_addr.last().unwrap(),
         pa_level: PALevel::Low,
         pipe0_address: tx_addr,
         max_retries: args.retries,
