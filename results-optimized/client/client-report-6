@@ -1,0 +1,42 @@
+Connecting to host 172.0.0.1, port 5001
+[  5] local 172.0.0.100 port 37076 connected to 172.0.0.1 port 5001
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-2778.32 sec  39.8 KBytes   117 bits/sec    0             sender
+[  5]   0.00-2778.32 sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5002
+[  5] local 172.0.0.100 port 46782 connected to 172.0.0.1 port 5002
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec    0             sender
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5003
+[  5] local 172.0.0.100 port 46442 connected to 172.0.0.1 port 5003
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-2778.31 sec  39.8 KBytes   117 bits/sec    0             sender
+[  5]   0.00-2778.31 sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5004
+[  5] local 172.0.0.100 port 45418 connected to 172.0.0.1 port 5004
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec    0             sender
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5005
+[  5] local 172.0.0.100 port 41438 connected to 172.0.0.1 port 5005
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-2778.31 sec  39.8 KBytes   117 bits/sec    0             sender
+[  5]   0.00-2778.31 sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5006
+[  5] local 172.0.0.100 port 47360 connected to 172.0.0.1 port 5006
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec    0             sender
+[  5]   0.00-0.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated

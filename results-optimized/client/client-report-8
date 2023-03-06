@@ -1,0 +1,73 @@
+Connecting to host 172.0.0.1, port 5001
+[  5] local 172.0.0.100 port 58746 connected to 172.0.0.1 port 5001
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-0.10   sec  39.8 KBytes  3.25 Mbits/sec    1   8.28 KBytes       
+[  5]   0.10-0.20   sec  0.00 Bytes  0.00 bits/sec    0   8.28 KBytes       
+[  5]   0.20-0.30   sec  0.00 Bytes  0.00 bits/sec    1    848 Bytes       
+[  5]   0.30-0.40   sec  0.00 Bytes  0.00 bits/sec    0    848 Bytes       
+[  5]   0.40-0.50   sec  0.00 Bytes  0.00 bits/sec    0   9.94 KBytes       
+[  5]   0.50-0.60   sec  0.00 Bytes  0.00 bits/sec    0   11.6 KBytes       
+[  5]   0.60-0.70   sec  0.00 Bytes  0.00 bits/sec    0   14.1 KBytes       
+[  5]   0.70-0.80   sec  0.00 Bytes  0.00 bits/sec    0   15.7 KBytes       
+[  5]   0.80-0.90   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-1.00   sec  39.8 KBytes   326 Kbits/sec    2             sender
+[  5]   0.00-1.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5002
+[  5] local 172.0.0.100 port 51340 connected to 172.0.0.1 port 5002
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-0.10   sec  39.8 KBytes  3.25 Mbits/sec    0   9.11 KBytes       
+[  5]   0.10-0.20   sec  0.00 Bytes  0.00 bits/sec    0   11.6 KBytes       
+[  5]   0.20-0.30   sec  0.00 Bytes  0.00 bits/sec    0   14.1 KBytes       
+[  5]   0.30-0.40   sec  0.00 Bytes  0.00 bits/sec    0   15.7 KBytes       
+[  5]   0.40-0.50   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.50-0.60   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.60-0.70   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.70-0.80   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.80-0.90   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   16.6 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-1.00   sec  39.8 KBytes   326 Kbits/sec    0             sender
+[  5]   0.00-1.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5003
+[  5] local 172.0.0.100 port 46026 connected to 172.0.0.1 port 5003
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-0.10   sec  39.8 KBytes  3.25 Mbits/sec    1   8.28 KBytes       
+[  5]   0.10-0.20   sec  0.00 Bytes  0.00 bits/sec    0   8.28 KBytes       
+[  5]   0.20-0.30   sec  0.00 Bytes  0.00 bits/sec    1    848 Bytes       
+[  5]   0.30-0.40   sec  0.00 Bytes  0.00 bits/sec    0    848 Bytes       
+[  5]   0.40-0.50   sec  0.00 Bytes  0.00 bits/sec    0    848 Bytes       
+[  5]   0.50-0.60   sec  0.00 Bytes  0.00 bits/sec    0    848 Bytes       
+[  5]   0.60-0.70   sec  0.00 Bytes  0.00 bits/sec    1    848 Bytes       
+[  5]   0.70-0.80   sec  0.00 Bytes  0.00 bits/sec    0    848 Bytes       
+[  5]   0.80-0.90   sec  0.00 Bytes  0.00 bits/sec    0   9.94 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   12.4 KBytes       
+[  5]   0.90-1.00   sec  0.00 Bytes  0.00 bits/sec    0   12.4 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-1.00   sec  39.8 KBytes   326 Kbits/sec    3             sender
+[  5]   0.00-1.00   sec  0.00 Bytes  0.00 bits/sec                  receiver
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5004
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5005
+iperf3: error - unable to connect stream: Connection refused
+Connecting to host 172.0.0.1, port 5006
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+iperf3: error - the server has terminated
+Connecting to host 172.0.0.1, port 5007
+iperf3: error - unable to connect stream: Connection refused
+Connecting to host 172.0.0.1, port 5008
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+iperf3: error - the server has terminated
